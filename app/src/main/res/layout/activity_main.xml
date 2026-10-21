@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Статус і вибір ТВ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/dot_off" />
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="Запуск…"
+                android:textColor="@color/text"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnDevice"
+                style="@style/PillButton"
+                android:text="📺 ТВ" />
+        </LinearLayout>
+
+        <!-- Верхній ряд -->
+        <LinearLayout style="@style/Row" android:layout_marginTop="24dp">
+            <Button android:id="@+id/btnPower" style="@style/RoundKey.Red" android:text="⏻" />
+            <Button android:id="@+id/btnSearch" style="@style/RoundKey" android:text="🔍" />
+            <Button android:id="@+id/btnMenu" style="@style/RoundKey" android:text="☰" />
+        </LinearLayout>
+
+        <!-- D-pad -->
+        <GridLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:columnCount="3"
+            android:rowCount="3">
+
+            <Space android:layout_width="84dp" android:layout_height="84dp" />
+            <Button android:id="@+id/btnUp" style="@style/PadKey" android:text="▲" />
+            <Space android:layout_width="84dp" android:layout_height="84dp" />
+
+            <Button android:id="@+id/btnLeft" style="@style/PadKey" android:text="◀" />
+            <Button android:id="@+id/btnOk" style="@style/PadKey.Ok" android:text="OK" />
+            <Button android:id="@+id/btnRight" style="@style/PadKey" android:text="▶" />
+
+            <Space android:layout_width="84dp" android:layout_height="84dp" />
+            <Button android:id="@+id/btnDown" style="@style/PadKey" android:text="▼" />
+            <Space android:layout_width="84dp" android:layout_height="84dp" />
+        </GridLayout>
+
+        <!-- Назад / Додому -->
+        <LinearLayout style="@style/Row" android:layout_marginTop="24dp">
+            <Button android:id="@+id/btnBack" style="@style/RoundKey" android:text="↩" />
+            <Button android:id="@+id/btnHome" style="@style/RoundKey" android:text="⌂" />
+            <Button android:id="@+id/btnMute" style="@style/RoundKey" android:text="🔇" />
+        </LinearLayout>
+
+        <!-- Гучність -->
+        <LinearLayout style="@style/Row" android:layout_marginTop="16dp">
+            <Button android:id="@+id/btnVolDown" style="@style/WideKey" android:text="−  Гучн." />
+            <Button android:id="@+id/btnVolUp" style="@style/WideKey" android:text="Гучн.  +" />
+        </LinearLayout>
+
+        <!-- Медіа -->
+        <LinearLayout style="@style/Row" android:layout_marginTop="16dp">
+            <Button android:id="@+id/btnPrev" style="@style/RoundKey" android:text="⏮" />
+            <Button android:id="@+id/btnPlay" style="@style/RoundKey" android:text="⏯" />
+            <Button android:id="@+id/btnNext" style="@style/RoundKey" android:text="⏭" />
+        </LinearLayout>
+
+        <!-- Введення тексту -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@drawable/panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="6dp">
+
+            <Button
+                android:id="@+id/btnBackspace"
+                style="@style/PillButton"
+                android:text="⌫" />
+
+            <EditText
+                android:id="@+id/textInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Текст для пошуку (латиницею)"
+                android:imeOptions="actionSend"
+                android:inputType="text"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/text"
+                android:textColorHint="@color/muted" />
+
+            <Button
+                android:id="@+id/btnSendText"
+                style="@style/PillButton"
+                android:text="➤" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

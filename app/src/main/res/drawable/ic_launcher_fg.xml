@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Іконка: силует пульта з кнопками -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- корпус -->
+    <path android:fillColor="#FFEDEFF2"
+        android:pathData="M44,26h20a8,8 0,0 1,8 8v40a8,8 0,0 1,-8 8h-20a8,8 0,0 1,-8 -8v-40a8,8 0,0 1,8 -8z" />
+    <!-- кнопка живлення -->
+    <path android:fillColor="#FFD94848"
+        android:pathData="M54,33m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
+    <!-- кільце навігації -->
+    <path android:fillColor="#FF2A2E35"
+        android:pathData="M54,52m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
+    <path android:fillColor="#FF4F8CFF"
+        android:pathData="M54,52m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <!-- нижні кнопки -->
+    <path android:fillColor="#FF2A2E35"
+        android:pathData="M47,69m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+    <path android:fillColor="#FF2A2E35"
+        android:pathData="M61,69m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+</vector>
