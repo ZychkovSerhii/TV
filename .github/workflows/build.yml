@@ -6,19 +6,20 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Образ ubuntu-24.04 уже містить Android SDK (ANDROID_HOME)
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
       - name: Build debug APK
         run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
+          ./gradlew assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v5
         with:
           name: TvRemote-apk
           path: app/build/outputs/apk/debug/app-debug.apk
