@@ -3,6 +3,10 @@ package ua.tvremote
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.widget.ArrayAdapter
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -31,8 +35,69 @@ class MainActivity : AppCompatActivity(), HidRemote.Listener {
 
     private val permissions: Array<String> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE)
-        else emptyArray()
+            arrayOf(
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.BLUETOOTH_SCAN
+            )
+        else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    private val btAdapter: BluetoothAdapter? by lazy {
+        getSystemService(BluetoothManager::class.java)?.adapter
+    }
+
+    // ---- Пошук телевізора з боку телефона ----
+    private val found = mutableListOf<BluetoothDevice>()
+    private var foundAdapter: ArrayAdapter<String>? = null
+    private var scanDialog: AlertDialog? = null
+    private var bondingTarget: BluetoothDevice? = null
+
+    private val scanReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.action) {
+                BluetoothDevice.ACTION_FOUND -> {
+                    val d = deviceFrom(i) ?: return
+                    if (found.none { it.address == d.address }) {
+                        found += d
+                        foundAdapter?.add(label(d))
+                    }
+                }
+                BluetoothAdapter.ACTION_DISCOVERY_FINISHED ->
+                    scanDialog?.setTitle(if (found.isEmpty()) "Нічого не знайдено" else "Оберіть телевізор")
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                    val d = deviceFrom(i) ?: return
+                    if (d.address != bondingTarget?.address) return
+                    when (i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)) {
+                        BluetoothDevice.BOND_BONDED -> {
+                            bondingTarget = null
+                            onStatus("Сполучено. Підключення…", false)
+                            remote.connect(d)
+                        }
+                        BluetoothDevice.BOND_NONE -> {
+                            bondingTarget = null
+                            onStatus("Сполучення не вдалося. Спробуйте ще раз", false)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun deviceFrom(i: Intent): BluetoothDevice? =
+        if (Build.VERSION.SDK_INT >= 33)
+            i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+        else @Suppress("DEPRECATION") i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+
+    private fun label(d: BluetoothDevice): String {
+        val name = d.name
+        val kind = when (d.bluetoothClass?.majorDeviceClass) {
+            BluetoothClass.Device.Major.AUDIO_VIDEO -> "📺 "
+            BluetoothClass.Device.Major.PHONE -> "📱 "
+            BluetoothClass.Device.Major.COMPUTER -> "💻 "
+            else -> ""
+        }
+        return if (name.isNullOrBlank()) "$kind${d.address}" else "$kind$name"
+    }
 
     private val btStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
@@ -91,12 +156,19 @@ class MainActivity : AppCompatActivity(), HidRemote.Listener {
         }
 
         registerReceiver(btStateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        registerReceiver(scanReceiver, IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        })
 
         if (hasPermissions()) startRemote() else requestPermissions(permissions, REQ_PERMS)
     }
 
     override fun onDestroy() {
         unregisterReceiver(btStateReceiver)
+        unregisterReceiver(scanReceiver)
+        btAdapter?.cancelDiscovery()
         remote.stop()
         super.onDestroy()
     }
@@ -153,8 +225,9 @@ class MainActivity : AppCompatActivity(), HidRemote.Listener {
         if (!remote.bluetoothEnabled) { startRemote(); return }
 
         val devices = remote.bondedDevices()
-        val names = devices.map { it.name ?: it.address }.toMutableList()
-        names += "➕ Новий телевізор (зробити телефон видимим)"
+        val names = devices.map { "🔗 " + label(it) }.toMutableList()
+        names += "🔍 Знайти телевізор (пошук з телефона)"
+        names += "👁 Зробити телефон видимим для ТВ"
         if (remote.isConnected) names += "✖ Від'єднатися"
 
         AlertDialog.Builder(this)
@@ -162,23 +235,68 @@ class MainActivity : AppCompatActivity(), HidRemote.Listener {
             .setItems(names.toTypedArray()) { _, which ->
                 when {
                     which < devices.size -> remote.connect(devices[which])
-                    which == devices.size -> makeDiscoverable()
+                    which == devices.size -> scanForTv()
+                    which == devices.size + 1 -> makeDiscoverable()
                     else -> remote.disconnect()
                 }
             }
             .show()
     }
 
+    /** Телефон сам шукає телевізор і ініціює сполучення — працює, коли ТВ не показує телефон у своєму списку. */
+    private fun scanForTv() {
+        val a = btAdapter ?: return
+        found.clear()
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1)
+        foundAdapter = adapter
+        // Спочатку показуємо вже відомі пристрої, які телефон бачив раніше
+        scanDialog = AlertDialog.Builder(this)
+            .setTitle("Пошук… (1–2 хв)")
+            .setMessage(null)
+            .setAdapter(adapter) { _, which ->
+                val d = found.getOrNull(which) ?: return@setAdapter
+                a.cancelDiscovery()
+                pairWith(d)
+            }
+            .setNegativeButton("Скасувати") { _, _ -> a.cancelDiscovery() }
+            .setOnDismissListener { foundAdapter = null; scanDialog = null }
+            .show()
+
+        AlertDialog.Builder(this)
+            .setTitle("Підготуйте телевізор")
+            .setMessage(
+                "Щоб телевізор було видно, на ТВ відкрийте:\n" +
+                "Налаштування → Пульти й аксесуари → Створити пару з аксесуаром\n\n" +
+                "і залиште цей екран відкритим. Телевізор з'явиться у списку з назвою моделі (напр. «55V6B» або «Smart TV»)."
+            )
+            .setPositiveButton("ОК", null)
+            .show()
+
+        if (a.isDiscovering) a.cancelDiscovery()
+        if (!a.startDiscovery()) toast("Не вдалося почати пошук")
+    }
+
+    private fun pairWith(d: BluetoothDevice) {
+        if (d.bondState == BluetoothDevice.BOND_BONDED) {
+            remote.connect(d); return
+        }
+        bondingTarget = d
+        onStatus("Сполучення з ${d.name ?: d.address}… Підтвердьте код на ТВ і телефоні", false)
+        if (!d.createBond()) {
+            bondingTarget = null
+            onStatus("Не вдалося почати сполучення", false)
+        }
+    }
+
     private fun makeDiscoverable() {
         startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
-            .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120))
+            .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300))
         AlertDialog.Builder(this)
             .setTitle("Сполучення з ТВ")
             .setMessage(
-                "Телефон буде видимим 2 хвилини.\n\n" +
+                "Телефон буде видимим 5 хвилин.\n\n" +
                 "На телевізорі відкрийте:\nНалаштування → Пульти й аксесуари → Створити пару з аксесуаром.\n\n" +
-                "Оберіть у списку свій телефон і підтвердьте код на обох пристроях. " +
-                "Після цього застосунок підключиться сам."
+                "Якщо телефона в списку ТВ немає — скористайтеся пунктом «🔍 Знайти телевізор»."
             )
             .setPositiveButton("Зрозуміло", null)
             .show()
